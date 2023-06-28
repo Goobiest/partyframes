@@ -1,0 +1,14 @@
+{
+  "Author": "Roost",
+  "Name": "Party Frames",
+  "Punchline": "Grid-style party frames replacement",
+  "Description": "Description to be determined",
+  "InternalName": "partyFrames",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "party",
+    "frames",
+    "list",
+    "raid"
+  ]
+}
