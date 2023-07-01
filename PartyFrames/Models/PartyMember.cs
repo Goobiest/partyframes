@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace PartyFrames.Models
 {
-    internal class PartyMember
+    public class PartyMember
     {
         public int position { get; set; }
         public string name { get; set; } = string.Empty;

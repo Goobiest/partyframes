@@ -10,61 +10,80 @@ using Dalamud.Logging;
 using Dalamud.Game.ClientState.Buddy;
 using PMembers = PartyFrames.Models.PartyMember;
 using System.Collections.Generic;
+using System.Linq;
+using ImGuiNET;
+using Lumina.Excel.GeneratedSheets;
+using Dalamud.Data;
 
 namespace SamplePlugin
 {
     public sealed class Plugin : IDalamudPlugin
     {
+        public List<PMembers> members = new();
         public string Name => "Party Frames";
         private const string CommandName = "/pframes";
-        private List<PMembers> members;
 
         private DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
+        private ClientState clientState { get; init; }
+        private PartyList partyList { get; init; }
+        private BuddyList buddyList { get; init; }
+        public DataManager DataManager { get; init; }
         public Configuration Configuration { get; init; }
         public WindowSystem WindowSystem = new("PartyFrames");
 
         private ConfigWindow ConfigWindow { get; init; }
-        private MainWindow MainWindow { get; init; }
+        private PartyFrame PartyFrame { get; init; }
 
         public Plugin(
-            [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] CommandManager commandManager,
-            [RequiredVersion("1.0")] ClientState clientState,
-            [RequiredVersion("1.0")] PartyList partyList,
-            [RequiredVersion("1.0")] BuddyList buddyList
+            DalamudPluginInterface pluginInterface,
+            DataManager dataManager,
+            CommandManager commandManager,
+            ClientState clientState,
+            PartyList partyList,
+            BuddyList buddyList
             )
         {
-            this.PluginInterface = pluginInterface;
+            this.PluginInterface = pluginInterface; 
+            this.DataManager = dataManager;
             this.CommandManager = commandManager;
+            this.clientState = clientState;
+            this.partyList = partyList;
+            this.buddyList = buddyList;
+
+            this.members = new List<PMembers>();
+
 
             this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Configuration.Initialize(this.PluginInterface);
 
-            // you might normally want to embed resources and load them from the manifest stream
-            var imagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
-            var goatImage = this.PluginInterface.UiBuilder.LoadImage(imagePath);
-
             ConfigWindow = new ConfigWindow(this);
-            MainWindow = new MainWindow(this, goatImage);
+            PartyFrame = new PartyFrame(this);
 
             WindowSystem.AddWindow(ConfigWindow);
-            WindowSystem.AddWindow(MainWindow);
 
             this.CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "Opens the partyframes config window"
             });
 
-            this.PluginInterface.UiBuilder.Draw += DrawUI;
+            this.PluginInterface.UiBuilder.Draw += DrawFrames;
             this.PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
 
-            this.members = new List<PMembers>();
+            fillParty();
+            PluginLog.Log(this.members.First().name);
+        }
+
+        public void fillParty()
+        {
             //make list of elements
             //populate grid with elements
             //call update function whenever raid frame changes
             //specific updates for buffs/hp/etc? or maybe frame counter
-            var player = clientState.LocalPlayer;
+            this.members = new List<PMembers>();
+
+            var player = this.clientState.LocalPlayer;
+            
             this.members.Add(
                 new PMembers(
                     0,
@@ -81,15 +100,15 @@ namespace SamplePlugin
             if (partyList?.Length > 0)
             {
                 foreach (var member in partyList!)
-                {   
+                {
                     this.members.Add(new PMembers(
-                        0, 
-                        member.Name.TextValue, 
-                        member.CurrentHP, 
-                        member.MaxHP, 
-                        member.CurrentMP, 
-                        member.MaxMP, 
-                        member.World.ToString(), 
+                        0,
+                        member.Name.TextValue,
+                        member.CurrentHP,
+                        member.MaxHP,
+                        member.CurrentMP,
+                        member.MaxMP,
+                        member.World.ToString(),
                         member.ClassJob
                         )
                     );
@@ -102,8 +121,9 @@ namespace SamplePlugin
                 {
                     PluginLog.Log(buddy.GameObject.Name.TextValue);
                     PluginLog.Log(buddy.GameObject.ObjectKind.ToString());
-                }    
-            } else
+                }
+            }
+            else
             {
             }
         }
@@ -113,7 +133,6 @@ namespace SamplePlugin
             this.WindowSystem.RemoveAllWindows();
             
             ConfigWindow.Dispose();
-            MainWindow.Dispose();
             
             this.CommandManager.RemoveHandler(CommandName);
         }
@@ -121,12 +140,11 @@ namespace SamplePlugin
         private void OnCommand(string command, string args)
         {
             // in response to the slash command, just display our main ui
-            MainWindow.IsOpen = true;
         }
 
-        private void DrawUI()
+        private void DrawFrames()
         {
-            this.WindowSystem.Draw();
+            PartyFrame.Draw();
         }
 
         public void DrawConfigUI()
